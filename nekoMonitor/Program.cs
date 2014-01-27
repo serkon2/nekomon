@@ -47,49 +47,6 @@ class MyApplicationContext : ApplicationContext
 
     void worker()
     {
-        HttpListener listener = new HttpListener();
-        listener.Prefixes.Add("http://localhost:8080/");
-        listener.Start();
-        Console.WriteLine("Listening...");
-        while (true)
-        {
-            HttpListenerContext context = listener.GetContext();
-            HttpListenerRequest request = context.Request;
-            HttpListenerResponse response = context.Response;
-
-            Console.WriteLine("REQUEST: " + request.Url.LocalPath);
-
-            byte[] buffer;
-
-            if (request.Url.LocalPath == "/smart")
-            {
-                var json = new JavaScriptSerializer().Serialize(HDD.GetSMART());
-                buffer = System.Text.Encoding.UTF8.GetBytes(json);
-            }
-            else if (request.Url.LocalPath == "/hardware")
-            {
-                var json = new JavaScriptSerializer().Serialize(nekoMonitor.Hardware.Monitor.getData());
-                buffer = System.Text.Encoding.UTF8.GetBytes(json);
-            }
-            else if (request.Url.LocalPath == "/suspend")
-            {
-                buffer = System.Text.Encoding.UTF8.GetBytes("OK");
-            }
-            else
-            {
-                buffer = System.Text.Encoding.UTF8.GetBytes("Invalid request");
-            }
-
-            response.ContentType = "application/json";
-            response.ContentLength64 = buffer.Length;
-            System.IO.Stream output = response.OutputStream;
-            output.Write(buffer, 0, buffer.Length);
-            output.Close();
-
-            if (request.Url.LocalPath == "/suspend")
-            {
-                Application.SetSuspendState(PowerState.Suspend, true, true);
-            }
-        }
+        new HTTPServer.Server(5025);
     }
 }
