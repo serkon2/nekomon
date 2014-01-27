@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using nekoMonitor.SMART;
 
-namespace nekoMonitor
+namespace nekoMonitor.Hardware
 {
     class HDD
     {

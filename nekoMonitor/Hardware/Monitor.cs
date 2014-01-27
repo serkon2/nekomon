@@ -6,14 +6,20 @@ using System.Text;
 using OpenHardwareMonitor;
 using OpenHardwareMonitor.Hardware;
 
-namespace nekoMonitor
+namespace nekoMonitor.Hardware
 {
-    class Hardware
+    class Monitor
     {
         protected Computer computer = new Computer();
+        private static Monitor monitor = new Monitor();
         private static UpdateVisitor updateVisitor = new UpdateVisitor();
 
-        public Hardware()
+        public static List<Dictionary<string, string>> getData()
+        {
+            return monitor.getUpdatedData();
+        }
+
+        public Monitor()
         {
             this.computer.MainboardEnabled = true;
             this.computer.FanControllerEnabled = true;
