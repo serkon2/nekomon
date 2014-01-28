@@ -8,12 +8,28 @@ using System.Text.RegularExpressions;
 using System.IO;
 using System.Windows.Forms;
 using System.Web.Script.Serialization;
+using nekoMonitor;
 using nekoMonitor.Hardware;
 
 namespace HTTPServer
 {
     class Client
     {
+        private void RequestAuth(TcpClient Client)
+        {
+            var Code = 401;
+            string CodeStr = Code.ToString() + " " + ((HttpStatusCode)Code).ToString();
+            string Html = "<html><body><h1>" + CodeStr + "</h1></body></html>";
+            string Str = "HTTP/1.1 " + CodeStr + "\n" +
+                         "Content-type: text/html\n" + 
+                         "Content-Length:" + Html.Length.ToString() + "\n" + 
+                         "WWW-Authenticate: Basic realm=\"Protected\"\n\n" +
+                         Html;
+            byte[] Buffer = Encoding.ASCII.GetBytes(Str);
+            Client.GetStream().Write(Buffer, 0, Buffer.Length);
+            Client.Close();
+        }
+
         private void SendError(TcpClient Client, int Code)
         {
             string CodeStr = Code.ToString() + " " + ((HttpStatusCode)Code).ToString();
@@ -39,11 +55,27 @@ namespace HTTPServer
             }
 
             Match ReqMatch = Regex.Match(Request, @"^\w+\s+([^\s\?]+)[^\s]*\s+HTTP/.*|");
-
-            if (ReqMatch == Match.Empty)
+            if (ReqMatch == Match.Empty) { SendError(Client, 400); return; }
+            
+            var AuthConfig = Program.settings.GetValue("auth", "");
+            if (AuthConfig != "")
             {
-                SendError(Client, 400);
-                return;
+                Match AuthMatch = Regex.Match(Request, @"Authorization:\s+Basic\s+([^\s\n\r]+)");
+
+                if (AuthMatch != Match.Empty)
+                {
+                    var Password = Encoding.ASCII.GetString(System.Convert.FromBase64String(AuthMatch.Groups[1].Value));
+                    if (Password != AuthConfig)
+                    {
+                        RequestAuth(Client);
+                        return;
+                    }
+                }
+                else
+                {
+                    RequestAuth(Client);
+                    return;
+                }
             }
 
             byte[] buffer;
@@ -65,17 +97,27 @@ namespace HTTPServer
             {
                 buffer = System.Text.Encoding.UTF8.GetBytes("OK");
             }
+            else if (RequestUri == "/ping")
+            {
+                buffer = System.Text.Encoding.UTF8.GetBytes(Client.Client.RemoteEndPoint.ToString());
+            }
             else
             {
                 buffer = System.Text.Encoding.UTF8.GetBytes("Invalid request");
             }
 
-            // Посылаем заголовки
-            string Headers = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: " + buffer.Length + "\n\n";
-            byte[] HeadersBuffer = Encoding.ASCII.GetBytes(Headers);
-            Client.GetStream().Write(HeadersBuffer, 0, HeadersBuffer.Length);
-            Client.GetStream().Write(buffer, 0, buffer.Length);
-            Client.Close();
+            try
+            {
+                string Headers = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: " + buffer.Length + "\n\n";
+                byte[] HeadersBuffer = Encoding.ASCII.GetBytes(Headers);
+                Client.GetStream().Write(HeadersBuffer, 0, HeadersBuffer.Length);
+                Client.GetStream().Write(buffer, 0, buffer.Length);
+                Client.Close();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
 
             if (RequestUri == "/suspend")
             {

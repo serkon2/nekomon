@@ -1,33 +1,33 @@
 ﻿using System;
 using System.IO;
 using System.Text;
-using System.Net;
-using System.Net.Sockets;
 using System.Collections;
-using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.Web.Script.Serialization;
 using System.Windows.Forms;
-using System.ComponentModel;
 using System.Drawing;
 using System.Threading;
-using nekoMonitor.Hardware;
+using System.Configuration;
+using nekoMonitor;
 
 public class Program
 {
+    public static PersistentSettings settings = new PersistentSettings();
+
     [STAThread]
     public static void Main()
     {
+        settings.Load(Path.ChangeExtension(Application.ExecutablePath, ".config"));
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
-        MyApplicationContext app = new MyApplicationContext();
+        MyApplicationContext app = new MyApplicationContext(settings);
         Application.Run(app);
     }
 }
 
 class MyApplicationContext : ApplicationContext
 {
-    public MyApplicationContext()
+    protected PersistentSettings settings;
+
+    public MyApplicationContext(PersistentSettings settings)
     {
         NotifyIcon icon = new NotifyIcon();
         ContextMenu menu = new ContextMenu();
@@ -42,11 +42,13 @@ class MyApplicationContext : ApplicationContext
         icon.Visible = true;
         icon.ContextMenu = menu;
 
+        this.settings = settings;
         new Thread(worker).Start();
     }
 
     void worker()
     {
-        new HTTPServer.Server(5025);
+        var Port = Convert.ToInt32(this.settings.GetValue("port", 5025));
+        new HTTPServer.Server(Port);
     }
 }
