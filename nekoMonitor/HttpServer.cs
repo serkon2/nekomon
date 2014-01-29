@@ -99,7 +99,7 @@ namespace HTTPServer
             }
             else if (RequestUri == "/ping")
             {
-                buffer = System.Text.Encoding.UTF8.GetBytes(Client.Client.RemoteEndPoint.ToString());
+                buffer = System.Text.Encoding.UTF8.GetBytes("OK");
             }
             else
             {
@@ -128,7 +128,8 @@ namespace HTTPServer
 
     class Server
     {
-        TcpListener Listener;
+        protected TcpListener Listener;
+        public static ManualResetEvent allDone = new ManualResetEvent(false);
 
         public Server(int Port)
         {
@@ -136,15 +137,18 @@ namespace HTTPServer
             Listener.Start();
             while (true)
             {
-                TcpClient Client = Listener.AcceptTcpClient();
-                Thread Thread = new Thread(new ParameterizedThreadStart(ClientThread));
-                Thread.Start(Client);
+                allDone.Reset();
+                Listener.BeginAcceptTcpClient(new AsyncCallback(ClientThread), Listener);
+                allDone.WaitOne();
             }
         }
 
-        static void ClientThread(Object StateInfo)
+        static void ClientThread(IAsyncResult ar)
         {
-            new Client((TcpClient)StateInfo);
+            TcpListener listener = (TcpListener) ar.AsyncState;
+            TcpClient client = listener.EndAcceptTcpClient(ar);
+            new Client((TcpClient)client);
+            allDone.Set();
         }
 
         ~Server()

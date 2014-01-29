@@ -19,21 +19,20 @@ namespace nekoMonitor.Hardware
                 foreach (var drive in dicDrives)
                 {
                     var status = new Dictionary<string, string>();
-                    status["smart.serial"] = drive.Value.Serial;
-                    status["smart.model"] = drive.Value.Model;
-                    status["smart.type"] = drive.Value.Type;
-                    status["smart.status"] = (drive.Value.IsOK) ? "OK" : "BAD";
-
+                    status["serial"] = drive.Value.Serial;
+                    status["model"] = drive.Value.Model;
+                    status["type"] = drive.Value.Type;
+                    status["status"] = (drive.Value.IsOK) ? "OK" : "BAD";
                     foreach (var attr in drive.Value.Attributes)
                     {
                         if (attr.Value.HasData)
                         {
-                            status["smart.attr." + attr.Value.Attribute + ".name"] = attr.Value.Attribute;
-                            status["smart.attr." + attr.Value.Attribute + ".Data"] = attr.Value.Data.ToString();
-                            status["smart.attr." + attr.Value.Attribute + ".Current"] = attr.Value.Current.ToString();
-                            status["smart.attr." + attr.Value.Attribute + ".Worst"] = attr.Value.Worst.ToString();
-                            status["smart.attr." + attr.Value.Attribute + ".Threshold"] = attr.Value.Threshold.ToString();
-                            status["smart.attr." + attr.Value.Attribute + ".status"] = (attr.Value.IsOK) ? "OK" : "BAD";
+                            status["attr." + attr.Value.Attribute + ".name"] = attr.Value.Attribute;
+                            status["attr." + attr.Value.Attribute + ".data"] = attr.Value.Data.ToString();
+                            status["attr." + attr.Value.Attribute + ".current"] = attr.Value.Current.ToString();
+                            status["attr." + attr.Value.Attribute + ".worst"] = attr.Value.Worst.ToString();
+                            status["attr." + attr.Value.Attribute + ".threshold"] = attr.Value.Threshold.ToString();
+                            status["attr." + attr.Value.Attribute + ".status"] = (attr.Value.IsOK) ? "OK" : "BAD";
                         }
                     }
                     list.Add(status);
