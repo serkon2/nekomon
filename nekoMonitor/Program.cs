@@ -7,19 +7,67 @@ using System.Drawing;
 using System.Threading;
 using System.Configuration;
 using nekoMonitor;
+using System.Security.Principal;
+using System.Diagnostics;
 
 public class Program
 {
     public static PersistentSettings settings = new PersistentSettings();
+    public const string appName = "nekoMonitor";
 
     [STAThread]
     public static void Main()
     {
-        settings.Load(Path.ChangeExtension(Application.ExecutablePath, ".config"));
+        if (!IsAdministrator())
+        {
+            // Restart and run as admin
+            ProcessStartInfo startInfo = new ProcessStartInfo(Application.ExecutablePath);
+            startInfo.Verb = "runas";
+            Process.Start(startInfo);
+            Application.Exit();
+            return;
+        }
+
+        Directory.SetCurrentDirectory(Application.StartupPath);
+
+        settings.Load(Path.ChangeExtension(Application.ExecutablePath, ".config"));        
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
         MyApplicationContext app = new MyApplicationContext(settings);
         Application.Run(app);
+    }
+
+    public static bool IsInStartup()
+    {
+        try
+        {
+            Microsoft.Win32.RegistryKey key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
+            string v = key.GetValue(appName).ToString();
+            if (v != Application.ExecutablePath)
+                return false;
+            else
+                return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+    public static void AddStartup()
+    {
+        Microsoft.Win32.RegistryKey key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
+        key.SetValue(appName, Application.ExecutablePath);
+    }
+    public static void RemoveStartup()
+    {
+        Microsoft.Win32.RegistryKey key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
+        key.DeleteValue(appName);
+    }
+    public static bool IsAdministrator()
+    {
+        WindowsIdentity identity = WindowsIdentity.GetCurrent();
+        WindowsPrincipal principal = new WindowsPrincipal(identity);
+        return principal.IsInRole(WindowsBuiltInRole.Administrator);
     }
 }
 
@@ -32,17 +80,39 @@ class MyApplicationContext : ApplicationContext
         NotifyIcon icon = new NotifyIcon();
         ContextMenu menu = new ContextMenu();
         MenuItem menuItem1 = new MenuItem();
-        menu.MenuItems.AddRange(new MenuItem[] { menuItem1 });
-        menuItem1.Index = 0;
+        MenuItem autoStart = new MenuItem();
+        
+        menu.MenuItems.AddRange(new MenuItem[] { autoStart, menuItem1 });
+        
+        autoStart.Index = 0;
+        autoStart.Text = "Start at boot";
+        autoStart.Checked = Program.IsInStartup();
+        
+        autoStart.Click += new EventHandler(delegate (Object o, EventArgs a)
+        {
+            if (autoStart.Checked)
+            {
+                Program.RemoveStartup();
+            } else
+            {
+                Program.AddStartup();
+            }
+
+            autoStart.Checked = Program.IsInStartup();
+        });
+
+        menuItem1.Index = 1;
         menuItem1.Text = "E&xit";
         menuItem1.Click += new EventHandler(delegate(Object o, EventArgs a) {
             Environment.Exit(0);
         });
+
         icon.Icon = new System.Drawing.Icon(@"Resources/smallicon.ico");
         icon.Visible = true;
         icon.ContextMenu = menu;
 
         this.settings = settings;
+
         new Thread(worker).Start();
     }
 
