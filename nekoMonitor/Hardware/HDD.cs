@@ -39,7 +39,7 @@ namespace nekoMonitor.Hardware
                 }
                 return list;
             }
-            catch (ManagementException e)
+            catch (ManagementException)
             {
                 return list;
             }
