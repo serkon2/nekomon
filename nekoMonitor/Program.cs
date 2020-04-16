@@ -35,6 +35,7 @@ public class Program
         Application.SetCompatibleTextRenderingDefault(false);
         MyApplicationContext app = new MyApplicationContext(settings);
         Application.Run(app);
+        Environment.Exit(0);
     }
 
     public static bool IsInStartup()
@@ -74,10 +75,11 @@ public class Program
 class MyApplicationContext : ApplicationContext
 {
     protected PersistentSettings settings;
+    private NotifyIcon icon;
 
     public MyApplicationContext(PersistentSettings settings)
     {
-        NotifyIcon icon = new NotifyIcon();
+        icon = new NotifyIcon();
         ContextMenu menu = new ContextMenu();
         MenuItem menuItem1 = new MenuItem();
         MenuItem autoStart = new MenuItem();
@@ -104,7 +106,7 @@ class MyApplicationContext : ApplicationContext
         menuItem1.Index = 1;
         menuItem1.Text = "E&xit";
         menuItem1.Click += new EventHandler(delegate(Object o, EventArgs a) {
-            Environment.Exit(0);
+            Application.Exit();
         });
 
         icon.Icon = new System.Drawing.Icon(@"Resources/smallicon.ico");
@@ -116,9 +118,27 @@ class MyApplicationContext : ApplicationContext
         new Thread(worker).Start();
     }
 
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            icon.Dispose();
+        }
+        base.Dispose(disposing);
+    }
+
     void worker()
     {
         var Port = Convert.ToInt32(this.settings.GetValue("port", 5025));
-        new HTTPServer.Server(Port);
+
+        try
+        {
+            new HTTPServer.Server(Port);
+        }
+        catch (Exception e)
+        {
+            MessageBox.Show($"Could not run server on port {Port}: {e.Message}", Program.appName, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Application.Exit();
+        }
     }
 }
